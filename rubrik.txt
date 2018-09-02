@@ -1,0 +1,4 @@
+{
+	'NR: powers of 2': [1,2,3],
+	'NR: radix': [4]
+}
