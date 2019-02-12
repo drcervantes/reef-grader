@@ -7,6 +7,8 @@ import itertools
 import math
 import ast
 
+from openpyxl.styles import Font, Alignment
+
 '''
 grader.py grades quiz rubrik
 
@@ -69,11 +71,16 @@ def create_new_sheet(wb, name, skills):
 
 	columns = list(itertools.islice(first_sheet.columns, 3))
 	for i, col in enumerate(columns, 1):
+		#new_sheet.column_dimensions[i].width = 17
 		for j, cell in enumerate(col, 1):
+			if col == 1:
+				new_sheet.cell(row=j, column=i).font = Font(bold=True)
 			new_sheet.cell(row=j, column=i).value = cell.value
 
 	for c, s in enumerate(skills, 4):
 		new_sheet.cell(row=cfg['grades_skill_row'], column=c).value = s
+		new_sheet.cell(row=cfg['grades_skill_row'], column=c).alignment = Alignment(text_rotation=45)
+		#new.sheet.column_dimensions[c].width = 4
 
 	return new_sheet
 
@@ -105,27 +112,32 @@ def main():
 	grades_ws = create_new_sheet(grades_wb, name, rubrik)
 
 	# Compute and assign grades
+	lost = []
 	for i in range(cfg['quiz_student_begin'], quiz_ws.max_row):
 		student = quiz_ws.cell(row=i, column=cfg['quiz_student_col']).value
 		print('Computing grades for {}'.format(student))
 
-		for skill, questions in rubrik.items():
-			print('... measuring skill: {}'.format(skill))
+		found = find_student(grades_ws, student)
+		if found:
+			for skill, questions in rubrik.items():
+				print('... measuring skill: {}'.format(skill))
 
-			values = []
-			for q in questions:
-				score = quiz_ws.cell(row=i, column=cfg['quiz_question_begin'] + q - 1)
-				print('... using value from {}'.format(score.coordinate))
-				if isinstance(score.value, int):
-					values.append(float(score.value))
+				values = []
+				for q in questions:
+					score = quiz_ws.cell(row=i, column=cfg['quiz_question_begin'] + q - 1)
+					if not isinstance(score.value, str):
+						print('... using value from {}'.format(score.coordinate))
+						values.append(float(score.value))
 
-			if values:
-				grade = compute_grade(values)
+				if values:
+					grade = compute_grade(values)
+					print('... computed grade: {}'.format(grade))
 
-			found = find_student(grades_ws, student)
-			if found:
-				grades_ws.cell(row=found, column=find_skill_col(grades_ws, skill)).value = grade
-				print('... grade updated')
+					grades_ws.cell(row=found, column=find_skill_col(grades_ws, skill)).value = grade
+					print('... grade updated')
+		else:
+			lost.append(student)
+	print('Lost students: {}'.format(lost))
 	
 	grades_wb.save('test.xlsx')
 
